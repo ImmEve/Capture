@@ -7,6 +7,7 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
+
 class Reference():
     def __init__(self, Reference_Type, Reference_Size, Subsegment_Duration, Starts_with_SAP, SAP_Type):
         self.Reference_Type = Reference_Type
@@ -189,18 +190,14 @@ class Video():
         os.makedirs(f'{self.datapath}/videoheader/{self.video_name}', exist_ok=True)
         for itag in self.itag_list:
             videopath = f'{self.datapath}/videoheader/{self.video_name}/{self.video_name}_{self.itag_mimetype[itag]}_{itag}.{self.itag_filetype[itag]}'
-            command = 'yt-dlp -f {} {} -o {}'.format(itag, self.url, videopath)
-            command = command.split(' ')
-            process = subprocess.Popen(command)
-            time.sleep(10)
-            process.kill()
-        time.sleep(30)
-        dirfile = os.listdir(self.datapath + '/videoheader/' + self.video_name)
-        for file in dirfile:
-            if '.part' in file:
-                oldname = self.datapath + '/videoheader/' + self.video_name + '/' + file
-                newname = self.datapath + '/videoheader/' + self.video_name + '/' + file.replace('.part', '')
-                os.rename(oldname, newname)
+            while 10:
+                if os.path.exists(videopath):
+                    break
+                command = 'yt-dlp -f {} {} -o {}'.format(itag, self.url, videopath)
+                command = command.split(' ')
+                process = subprocess.Popen(command)
+                time.sleep(10)
+                process.kill()
 
     def analyse_video(self):
         self.analyse_websource()
