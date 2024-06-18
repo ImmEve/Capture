@@ -246,4 +246,4 @@ if __name__ == '__main__':
             video.analyse_video()
         except:
             with open('../data/fingerprint/error_log.csv', 'a') as f:
-                f.write(url_list[i] + '\n')
+                f.write(f'{url_list[i]}\n')
