@@ -21,9 +21,11 @@ class Capture():
         self.pcap_path = conf.get('parameter', 'pcap_path')
         os.makedirs(self.pcap_path, exist_ok=True)
         self.responsebody_path = conf.get('parameter', 'responsebody_path')
+        os.makedirs(self.responsebody_path, exist_ok=True)
         self.url_csv_path = conf.get('parameter', 'url_csv_path')
         self.mitmdump_path = conf.get('parameter', 'mitmdump_path')
         self.time_duration = 2 * 60
+        self.errorlog = conf.get('parameter', 'errorlog')
 
         self.driver = self.chrome_driver_init()
 
@@ -134,6 +136,8 @@ class Capture():
         if duration_of_the_video > self.time_duration:
             duration_of_the_video = self.time_duration
         else:
+            with open(self.errorlog, 'a') as f:
+                f.write(video_url + '\n')
             return
 
         # 检查视频是否包含指定分辨率
@@ -141,6 +145,8 @@ class Capture():
         video_resolution = self.get_video_resolution()
         print(f'video_resolution: {video_resolution}')
         if not all(resolution in video_resolution for resolution in check_resolution):
+            with open(self.errorlog, 'a') as f:
+                f.write(video_url + '\n')
             return
 
         for t in range(turn):
