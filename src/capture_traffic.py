@@ -108,6 +108,7 @@ class Capture():
         p = ProxySetting()
         p.enable = True
         p.server = '127.0.0.1:7890'
+        # p.enable = False
         p.registry_write()
 
         video_duration = -1
@@ -172,6 +173,7 @@ class Capture():
             tsharkCall = [self.tshark_path, '-F', 'pcap', '-i', self.tshark_interface, '-w', pcap_filepath]
             tsharkProc = subprocess.Popen(tsharkCall, stdout=tsharkOut, executable=self.tshark_path)
             mitmCall = [self.mitmdump_path, '-s', 'capture_responsebody.py', '--mode', 'upstream:http://127.0.0.1:7890']
+            # mitmCall = [self.mitmdump_path, '-s', 'capture_responsebody.py']
             mitmProc = subprocess.Popen(mitmCall, executable=self.mitmdump_path)
             time.sleep(10)
 
