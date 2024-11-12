@@ -24,10 +24,8 @@ class Capture():
         os.makedirs(self.responsebody_path, exist_ok=True)
         self.url_csv_path = conf.get('parameter', 'url_csv_path')
         self.mitmdump_path = conf.get('parameter', 'mitmdump_path')
-        self.time_duration = 2 * 60
+        self.time_duration = int(conf.get('parameter', 'time_duration'))
         self.errorlog = conf.get('parameter', 'errorlog')
-
-        self.driver = self.chrome_driver_init()
 
     def __del__(self):
         self.driver.close()
@@ -46,6 +44,7 @@ class Capture():
 
     # 持续访问URL直到成功
     def loop_get_url(self, loop_count, video_url):
+        self.driver = self.chrome_driver_init()
         for i in range(0, loop_count):
             try:
                 time.sleep(3)
@@ -105,8 +104,7 @@ class Capture():
     # 单个播放视频URL，并记录pcap
     def capture_traffic(self, video_url, turn):
         print('start capturing...')
-        # 创建目录
-        os.makedirs(self.pcap_path, exist_ok=True)
+        # 更改端口
         p = ProxySetting()
         p.enable = True
         p.server = '127.0.0.1:7890'
@@ -114,12 +112,11 @@ class Capture():
 
         video_duration = -1
         loop_count = 10
-
         # 打开视频
         if self.loop_get_url(loop_count, video_url) == 0:
-            print('get URL error')
+            with open(self.errorlog, 'a') as f:
+                f.write(f'{video_url}: Playback Error\n')
             return
-
         time.sleep(10)
 
         # 获取视频的播放时长
@@ -137,7 +134,9 @@ class Capture():
             duration_of_the_video = self.time_duration
         else:
             with open(self.errorlog, 'a') as f:
-                f.write(video_url + '\n')
+                f.write(f'{video_url}: Duration Error\n')
+            self.driver.close()
+            time.sleep(10)
             return
 
         # 检查视频是否包含指定分辨率
@@ -146,11 +145,21 @@ class Capture():
         print(f'video_resolution: {video_resolution}')
         if not all(resolution in video_resolution for resolution in check_resolution):
             with open(self.errorlog, 'a') as f:
-                f.write(video_url + '\n')
+                f.write(f'{video_url}: Resolution Error\n')
+            self.driver.close()
+            time.sleep(10)
             return
 
+        # 关闭视频
+        self.driver.close()
+        time.sleep(10)
+        # 更改端口
+        p.enable = True
+        p.server = '127.0.0.1:8080'
+        p.registry_write()
+
         for t in range(turn):
-            # 新建文件名
+            # 新建文件
             t_time = time.strftime('%Y_%m_%d_%H_%M')
             video_name = video_url.split('=')[-1]
             pcap_filename = f'{video_name} TLS {check_resolution[0]} {str(duration_of_the_video)}s {t_time}.pacp'
@@ -158,29 +167,23 @@ class Capture():
             pcap_filepath = self.pcap_path + pcap_filename
             responsebody_filepath = self.responsebody_path + responsebody_filename
 
-            self.driver.close()
-            time.sleep(10)
-
             # 开始记录网络流量
             tsharkOut = open(pcap_filepath, 'wb')
             tsharkCall = [self.tshark_path, '-F', 'pcap', '-i', self.tshark_interface, '-w', pcap_filepath]
             tsharkProc = subprocess.Popen(tsharkCall, stdout=tsharkOut, executable=self.tshark_path)
-            p.enable = True
-            p.server = '127.0.0.1:8080'
-            p.registry_write()
             mitmCall = [self.mitmdump_path, '-s', 'capture_responsebody.py', '--mode', 'upstream:http://127.0.0.1:7890']
             mitmProc = subprocess.Popen(mitmCall, executable=self.mitmdump_path)
             time.sleep(10)
 
-            self.driver = self.chrome_driver_init()
+            # 播放视频
             self.loop_get_url(loop_count, video_url)
-            # 等待视频播放
-            time.sleep(duration_of_the_video)
+            time.sleep(duration_of_the_video + 10)
             # 结束流量采集
-            time.sleep(10)
             tsharkProc.kill()
             mitmProc.kill()
             os.rename(self.responsebody_path + 'log.csv', responsebody_filepath)
+            # 关闭视频
+            self.driver.close()
             time.sleep(10)
 
     def batch_capture(self, turn):
@@ -194,7 +197,5 @@ class Capture():
 
 if __name__ == '__main__':
     capture = Capture()
-
-    capture.capture_traffic('https://www.youtube.com/watch?v=GiZZ_DRE2To', 10)
-
-    # capture.batch_capture(1)
+    # capture.capture_traffic('https://www.youtube.com/watch?v=GiZZ_DRE2To', 10)
+    capture.batch_capture(1)
