@@ -97,3 +97,21 @@ class Webdriver():
         with open(self.errorlog, 'a') as f:
             f.write(f'{video_url}: resolution error\n')
         return 0
+
+    def get_urllist(self):
+        for i in range(0, 100):
+            self.driver.execute_script('window.scrollBy(0,1000)')
+            time.sleep(1)
+        # 从索引页批量获取视频URL
+        video_urls = []
+        html = self.driver.page_source.encode("utf-8", "ignore")
+        parseHtml = etree.HTML(html)
+        index_page_xpath = '//a[@id="thumbnail"]/@href'
+        raw_video_urls = parseHtml.xpath(index_page_xpath)
+        # 跳过短视频
+        for url in raw_video_urls:
+            if str(url).__contains__('watch'):
+                video_urls.append("https://www.youtube.com/" + str(url))
+        else:
+            video_urls = parseHtml.xpath(index_page_xpath)
+        return video_urls

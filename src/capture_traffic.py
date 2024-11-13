@@ -1,4 +1,5 @@
 import configparser
+import csv
 import os.path
 import subprocess
 import time
@@ -14,48 +15,52 @@ class Capture():
         os.makedirs(self.pcap_path, exist_ok=True)
         self.responsebody_path = conf.get('parameter', 'responsebody_path')
         os.makedirs(self.responsebody_path, exist_ok=True)
-        self.url_csv_path = conf.get('parameter', 'url_csv_path')
+        self.url_list_path = conf.get('parameter', 'url_list_path')
+        self.url_class_path = conf.get('parameter', 'url_class_path')
         self.tshark_interface = conf.get('parameter', 'tshark_interface')
         self.tshark_path = conf.get('parameter', 'tshark_path')
         self.mitmdump_path = conf.get('parameter', 'mitmdump_path')
         self.time_duration = int(conf.get('parameter', 'time_duration'))
-        self.check_resolution = ['720p', '720p60', '1080p', '1080p60']
+        self.check_resolution = ['720p', '720p60', '720p ', '1080p', '1080p60', '1080p ']
         self.webdriver = Webdriver()
 
-    # 获取视频信息
-    def get_video_info(self, video_url):
+    # 检查视频信息
+    def check_video_info(self, video_url):
         # 打开视频
         if self.webdriver.loop_get_url(video_url) == 0:
-            return 0, 0
+            self.webdriver.driver.close()
+            return 0
         time.sleep(10)
         # 获取视频时长
         video_duration = self.webdriver.get_video_duration(video_url)
         if video_duration == 0:
-            return 0, 0
+            self.webdriver.driver.close()
+            return 0
         # 获取视频时长（秒）
         duration_of_the_video = self.webdriver.get_video_duration_second(video_duration)
         # 获取视频分辨率信息
         video_resolution = self.webdriver.get_video_resolution(video_url)
         if video_resolution == 0:
-            return 0, 0
-        return duration_of_the_video, video_resolution
-
-    # 检查视频信息
-    def check_video_info(self, video_url, duration_of_the_video, video_resolution):
+            self.webdriver.driver.close()
+            return 0
         # 检查视频时长
         if duration_of_the_video < self.time_duration:
             print(f'{video_url}: duration too short\n')
             with open(self.webdriver.errorlog, 'a') as f:
                 f.write(f'{video_url}: duration too short\n')
+            self.webdriver.driver.close()
             return 0
         # 检查分辨率
         if (set(self.check_resolution) & set(video_resolution)) == set():
             print(f'{video_url}: resolution not include\n')
             with open(self.webdriver.errorlog, 'a') as f:
                 f.write(f'{video_url}: resolution not include\n')
+            self.webdriver.driver.close()
             return 0
+        self.webdriver.driver.close()
         return 1
 
+    # 采集视频流量并记录解密响应
     def capture_traffic(self, video_url, turn):
         print('start checking...')
         p = ProxySetting()
@@ -65,12 +70,7 @@ class Capture():
         # p.enable = False
         p.registry_write()
 
-        duration_of_the_video, video_resolution = self.get_video_info(video_url)
-        self.webdriver.driver.close()
-        time.sleep(3)
-        if duration_of_the_video == 0 or video_resolution == 0:
-            return 0
-        if self.check_video_info(video_url, duration_of_the_video, video_resolution) == 0:
+        if self.check_video_info(video_url) == 0:
             return 0
 
         # 更改端口
@@ -82,13 +82,13 @@ class Capture():
             # 新建文件
             t_time = time.strftime('%Y_%m_%d_%H_%M')
             video_name = video_url.split('=')[-1]
-            pcap_filename = f'{video_name} TLS {self.check_resolution[0]} {str(duration_of_the_video)}s {t_time}.pacp'
-            responsebody_filename = f'{video_name} TLS {self.check_resolution[0]} {str(duration_of_the_video)}s {t_time}.csv'
+            pcap_filename = f'{video_name} TLS {self.check_resolution[0]} {str(self.time_duration)}s {t_time}.pacp'
+            responsebody_filename = f'{video_name} TLS {self.check_resolution[0]} {str(self.time_duration)}s {t_time}.csv'
             pcap_filepath = self.pcap_path + pcap_filename
             responsebody_filepath = self.responsebody_path + responsebody_filename
 
             # 开始记录网络流量
-            print('start checking...')
+            print('start capturing...')
             tsharkOut = open(pcap_filepath, 'wb')
             tsharkCall = [self.tshark_path, '-F', 'pcap', '-i', self.tshark_interface, '-w', pcap_filepath]
             tsharkProc = subprocess.Popen(tsharkCall, stdout=tsharkOut, executable=self.tshark_path)
@@ -113,16 +113,40 @@ class Capture():
             self.webdriver.driver.close()
             time.sleep(10)
 
+    # 批量采集
     def batch_capture(self, turn):
-        csv_file = open(self.url_csv_path, mode='r', encoding='utf-8')
+        csv_file = open(self.url_list_path, 'r', encoding='utf-8')
         csv_data = csv_file.read()
         video_urls = csv_data.split('\n')
 
-        for i in range(13, len(video_urls)):
+        for i in range(0, len(video_urls)):
             self.capture_traffic(video_urls[i], turn)
+
+    # 抓取url
+    def clawer_url(self):
+        with open(self.url_class_path, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            class_list = list(reader)
+        urllist = []
+        for class_url in range(len(class_list)):
+            # 打开视频
+            if self.webdriver.loop_get_url(class_list[class_url][1]) == 0:
+                self.webdriver.driver.close()
+                return 0
+            time.sleep(10)
+            urls = self.webdriver.get_urllist()
+            self.webdriver.driver.close()
+            urllist = urllist + urls
+        urllist = list(set(urllist))
+        t_time = time.strftime('%Y_%m_%d_%H_%M')
+        with open(f'{self.url_class_path.split("_")[0]}_{t_time}.csv', 'w') as f:
+            f.write('\n')
+            for url in urllist:
+                f.write(url[:44] + '\n')
 
 
 if __name__ == '__main__':
     capture = Capture()
-    capture.capture_traffic('https://www.youtube.com/watch?v=rT3EwuunXJA', 10)
+    capture.clawer_url()
+    # capture.capture_traffic('https://www.youtube.com/watch?v=rT3EwuunXJA', 10)
     # capture.batch_capture(1)
