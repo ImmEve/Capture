@@ -112,6 +112,4 @@ class Webdriver():
         for url in raw_video_urls:
             if str(url).__contains__('watch'):
                 video_urls.append("https://www.youtube.com/" + str(url))
-        else:
-            video_urls = parseHtml.xpath(index_page_xpath)
         return video_urls

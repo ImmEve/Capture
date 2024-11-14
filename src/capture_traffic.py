@@ -139,14 +139,13 @@ class Capture():
             urllist = urllist + urls
         urllist = list(set(urllist))
         t_time = time.strftime('%Y_%m_%d_%H_%M')
-        with open(f'{self.url_class_path.split("_")[0]}_{t_time}.csv', 'w') as f:
-            f.write('\n')
+        with open(f'{self.url_class_path.split("_")[0]}_list_{t_time}.csv', 'w') as f:
             for url in urllist:
-                f.write(url[:44] + '\n')
+                f.write(url + '\n')
 
 
 if __name__ == '__main__':
     capture = Capture()
-    capture.clawer_url()
+    # capture.clawer_url()
     # capture.capture_traffic('https://www.youtube.com/watch?v=rT3EwuunXJA', 10)
-    # capture.batch_capture(1)
+    capture.batch_capture(1)
