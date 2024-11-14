@@ -62,22 +62,6 @@ class Capture():
 
     # 采集视频流量并记录解密响应
     def capture_traffic(self, video_url, turn):
-        print('start checking...')
-        p = ProxySetting()
-        # 更改端口
-        p.enable = True
-        p.server = '127.0.0.1:7890'
-        # p.enable = False
-        p.registry_write()
-
-        if self.check_video_info(video_url) == 0:
-            return 0
-
-        # 更改端口
-        p.enable = True
-        p.server = '127.0.0.1:8080'
-        p.registry_write()
-
         for t in range(turn):
             # 新建文件
             t_time = time.strftime('%Y_%m_%d_%H_%M')
@@ -120,7 +104,32 @@ class Capture():
         video_urls = csv_data.split('\n')
 
         for i in range(0, len(video_urls)):
+            print('start checking...')
+            p = ProxySetting()
+            # 更改端口
+            p.enable = True
+            p.server = '127.0.0.1:7890'
+            # p.enable = False
+            p.registry_write()
+            if self.check_video_info(video_urls[i]) == 0:
+                continue
+
+            # 更改端口
+            p.enable = True
+            p.server = '127.0.0.1:8080'
+            p.registry_write()
             self.capture_traffic(video_urls[i], turn)
+
+    def batch_check(self):
+        with open(self.url_list_path, 'r', encoding='utf-8') as f:
+            csv_data = f.read()
+            video_urls = csv_data.split('\n')
+
+        t_time = time.strftime('%Y_%m_%d_%H_%M')
+        with open(f'{self.url_class_path.split("_")[0]}_checklist_{t_time}.csv', 'a') as f:
+            for i in range(0, 3):
+                if self.check_video_info(video_urls[i]) == 1:
+                    f.write(video_urls[i] + '\n')
 
     # 抓取url
     def clawer_url(self):
@@ -128,7 +137,7 @@ class Capture():
             reader = csv.reader(f)
             class_list = list(reader)
         urllist = []
-        for class_url in range(len(class_list)):
+        for class_url in range(15, len(class_list)):
             # 打开视频
             if self.webdriver.loop_get_url(class_list[class_url][1]) == 0:
                 self.webdriver.driver.close()
@@ -141,11 +150,12 @@ class Capture():
         t_time = time.strftime('%Y_%m_%d_%H_%M')
         with open(f'{self.url_class_path.split("_")[0]}_list_{t_time}.csv', 'w') as f:
             for url in urllist:
-                f.write(url + '\n')
+                f.write(url[:44] + '\n')
 
 
 if __name__ == '__main__':
     capture = Capture()
     # capture.clawer_url()
+    capture.batch_check()
     # capture.capture_traffic('https://www.youtube.com/watch?v=rT3EwuunXJA', 10)
-    capture.batch_capture(1)
+    # capture.batch_capture(1)
