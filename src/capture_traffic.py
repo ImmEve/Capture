@@ -21,7 +21,7 @@ class Capture():
         self.tshark_path = conf.get('parameter', 'tshark_path')
         self.mitmdump_path = conf.get('parameter', 'mitmdump_path')
         self.time_duration = int(conf.get('parameter', 'time_duration'))
-        self.check_resolution = ['720p', '720p60', '720p ', '1080p', '1080p60', '1080p ']
+        self.check_resolution = ['720p']
         self.webdriver = Webdriver()
 
     # 检查视频信息
