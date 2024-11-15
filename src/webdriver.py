@@ -38,7 +38,8 @@ class Webdriver():
                 print(f'video: {video_url}')
                 return 1
             except:
-                print(f'{video_url}: playback error\n')
+                pass
+        print(f'{video_url}: playback error\n')
         with open(self.errorlog, 'a') as f:
             f.write(f'{video_url}: playback error\n')
         return 0
@@ -55,7 +56,8 @@ class Webdriver():
                 print(f'video_duration: {video_duration[0]}')
                 return video_duration
             except:
-                print(f'{video_url}: duration error\n')
+                pass
+        print(f'{video_url}: duration error\n')
         with open(self.errorlog, 'a') as f:
             f.write(f'{video_url}: duration error\n')
         return 0
@@ -93,7 +95,8 @@ class Webdriver():
                 print(f'video_resolution: {video_resolution}')
                 return video_resolution
             except:
-                print(f'{video_url}: resolution error\n')
+                pass
+        print(f'{video_url}: resolution error\n')
         with open(self.errorlog, 'a') as f:
             f.write(f'{video_url}: resolution error\n')
         return 0
