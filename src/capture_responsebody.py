@@ -12,7 +12,7 @@ class Mitm:
         if 'videoplayback' in flow.request.pretty_url:
             response_body_size = len(flow.response.content)
             if response_body_size > 1000:
-                with open(self.responsebody_filepath, 'a+') as f:
+                with open(self.responsebody_filepath, 'a') as f:
                     f.write(str(response_body_size) + '\n')
                 print(f"Response body size: {response_body_size} bytes")
 
