@@ -45,14 +45,14 @@ class Capture():
             return 0
         # 检查视频时长
         if duration_of_the_video < self.time_duration:
-            print(f'{video_url}: duration too short\n')
+            print(f'{video_url}: duration too short')
             with open(self.webdriver.errorlog, 'a') as f:
                 f.write(f'{video_url}: duration too short\n')
             self.webdriver.driver.close()
             return 0
         # 检查分辨率
         if (set(self.check_resolution) & set(video_resolution)) == set():
-            print(f'{video_url}: resolution not include\n')
+            print(f'{video_url}: resolution not include')
             with open(self.webdriver.errorlog, 'a') as f:
                 f.write(f'{video_url}: resolution not include\n')
             self.webdriver.driver.close()
@@ -67,7 +67,7 @@ class Capture():
             # 新建文件
             t_time = time.strftime('%Y_%m_%d_%H_%M')
             video_name = video_url.split('=')[-1]
-            pcap_filename = f'{video_name} TLS {self.check_resolution[0]} {str(self.time_duration)}s {t_time}.pacp'
+            pcap_filename = f'{video_name} TLS {self.check_resolution[0]} {str(self.time_duration)}s {t_time}.pcap'
             responsebody_filename = f'{video_name} TLS {self.check_resolution[0]} {str(self.time_duration)}s {t_time}.csv'
             pcap_filepath = self.pcap_path + pcap_filename
             responsebody_filepath = self.responsebody_path + responsebody_filename
@@ -91,7 +91,7 @@ class Capture():
             try:
                 os.rename(self.responsebody_path + 'log.csv', responsebody_filepath)
             except:
-                print(f'{video_url}: log error\n')
+                print(f'{video_url}: log error')
                 with open(self.webdriver.errorlog, 'a') as f:
                     f.write(f'{video_url}: log error\n')
             # 关闭视频
@@ -114,7 +114,7 @@ class Capture():
             try:
                 self.capture_traffic(video_urls[i], turn)
             except:
-                print(f'{video_urls[i]}: capture error\n')
+                print(f'{video_urls[i]}: capture error')
                 with open(self.webdriver.errorlog, 'a') as f:
                     f.write(f'{video_urls[i]}: capture error\n')
 
@@ -131,7 +131,7 @@ class Capture():
                     if self.check_video_info(video_urls[i]) == 1:
                         f.write(video_urls[i] + '\n')
                 except:
-                    print(f'{video_urls[i]}: check error\n')
+                    print(f'{video_urls[i]}: check error')
                     with open(self.webdriver.errorlog, 'a') as f:
                         f.write(f'{video_urls[i]}: check error\n')
 
