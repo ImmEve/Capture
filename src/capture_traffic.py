@@ -11,16 +11,16 @@ class Capture():
     def __init__(self):
         conf = configparser.ConfigParser()
         conf.read('config.conf', encoding='UTF-8')
-        self.pcap_path = conf.get('parameter', 'pcap_path')
+        self.pcap_path = conf.get('capture', 'pcap_path')
         os.makedirs(self.pcap_path, exist_ok=True)
-        self.responsebody_path = conf.get('parameter', 'responsebody_path')
+        self.responsebody_path = conf.get('capture', 'responsebody_path')
         os.makedirs(self.responsebody_path, exist_ok=True)
-        self.url_list_path = conf.get('parameter', 'url_list_path')
-        self.url_class_path = conf.get('parameter', 'url_class_path')
-        self.tshark_interface = conf.get('parameter', 'tshark_interface')
-        self.tshark_path = conf.get('parameter', 'tshark_path')
-        self.mitmdump_path = conf.get('parameter', 'mitmdump_path')
-        self.time_duration = int(conf.get('parameter', 'time_duration'))
+        self.url_list_path = conf.get('capture', 'url_list_path')
+        self.url_class_path = conf.get('capture', 'url_class_path')
+        self.tshark_interface = conf.get('capture', 'tshark_interface')
+        self.tshark_path = conf.get('capture', 'tshark_path')
+        self.mitmdump_path = conf.get('capture', 'mitmdump_path')
+        self.time_duration = int(conf.get('capture', 'time_duration'))
         self.check_resolution = ['720p']
         self.webdriver = Webdriver()
 
@@ -125,15 +125,15 @@ class Capture():
             video_urls = csv_data.split('\n')
 
         t_time = time.strftime('%Y_%m_%d_%H_%M')
-        with open(f'{self.url_class_path.split("_")[0]}_checklist_{t_time}.csv', 'a') as f:
-            for i in range(len(video_urls)):
-                try:
-                    if self.check_video_info(video_urls[i]) == 1:
+        for i in range(len(video_urls)):
+            try:
+                if self.check_video_info(video_urls[i]) == 1:
+                    with open(f'{self.url_class_path.split("_")[0]}_checklist_{t_time}.csv', 'a') as f:
                         f.write(video_urls[i] + '\n')
-                except:
-                    print(f'{video_urls[i]}: check error')
-                    with open(self.webdriver.errorlog, 'a') as f:
-                        f.write(f'{video_urls[i]}: check error\n')
+            except:
+                print(f'{video_urls[i]}: check error')
+                with open(self.webdriver.errorlog, 'a') as f:
+                    f.write(f'{video_urls[i]}: check error\n')
 
     # 抓取url
     def clawer_url(self):

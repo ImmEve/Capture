@@ -1,9 +1,11 @@
+import configparser
 import csv
 import json
 import os
 import re
 import subprocess
 import time
+from itertools import accumulate
 import requests
 from bs4 import BeautifulSoup
 
@@ -72,6 +74,7 @@ class Box():
 
         self.reference = []
         self.reference_list = []
+        self.duration_list = []
         while len(sidx) != 0:
             Reference_Type = int.from_bytes(sidx[:1], byteorder='big')
             sidx = sidx[1:]
@@ -87,6 +90,7 @@ class Box():
             ref = Reference(Reference_Type, Reference_Size, Subsegment_Duration, Starts_with_SAP, SAP_Type)
             self.reference.append(ref)
             self.reference_list.append(Reference_Size)
+            self.duration_list.append(Subsegment_Duration)
 
     def get_metedata_webm(self, videopath):
         with open(videopath, 'rb') as f:
@@ -98,6 +102,7 @@ class Box():
 
         self.track = []
         self.track_list = []
+        self.timeline = []
         while len(cues) != 0:
             Track_Time_Flag = int.from_bytes(cues[3:4], byteorder='big')
             cues = cues[4:]
@@ -119,27 +124,33 @@ class Box():
             self.track.append(tra)
             if len(self.track) > 1:
                 self.track_list.append(self.track[-1].Track_Position - self.track[-2].Track_Position)
+            self.timeline.append(Track_Time)
 
 
 class Video():
-    def __init__(self, url, datapath, fingerpath):
+    def __init__(self, url):
+        conf = configparser.ConfigParser()
+        conf.read('config.conf', encoding='UTF-8')
+        self.datapath = conf.get('get_segment', 'datapath')
+        os.makedirs(self.datapath, exist_ok=True)
+        os.makedirs(f'{self.datapath}websource', exist_ok=True)
+        os.makedirs(f'{self.datapath}videoheader', exist_ok=True)
+        self.fingerpath = conf.get('get_segment', 'fingerpath')
         self.url = url
         self.video_name = self.url.split('=')[1]
-        self.datapath = datapath
-        self.fingerpath = fingerpath
-        self.video_mp4_itag = [135, 136, 137, 298, 299, 397, 398, 399, 400, 401, 571, 697, 698, 699, 700, 701, 702]
-        self.audio_mp4_itag = [140]
-        self.video_webm_itag = [244, 247, 248, 271, 313, 302, 303, 308, 315, 272, 333, 334, 335, 336, 337]
-        self.audio_webm_itag = [249, 250, 251]
+        self.video_mp4_itag = [136, 398]
+        self.audio_mp4_itag = []
+        self.video_webm_itag = [247]
+        self.audio_webm_itag = [251]
 
     def get_websource(self):
         response = requests.get(self.url)
         if response.status_code == 200:
-            with open(f'{self.datapath}/websource/{self.video_name}.html', 'w', encoding='utf-8') as f:
+            with open(f'{self.datapath}websource/{self.video_name}.html', 'w', encoding='utf-8') as f:
                 f.write(response.text)
 
     def analyse_websource(self):
-        with open(f'{self.datapath}/websource/{self.video_name}.html', 'r', encoding='utf-8') as f:
+        with open(f'{self.datapath}websource/{self.video_name}.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
         soup = BeautifulSoup(html_content, 'html.parser')
         # 找到所有的 <script> 标签
@@ -170,7 +181,7 @@ class Video():
             itag = param.get('itag')
             if itag in self.itag_list:
                 continue
-            if itag in (self.video_mp4_itag + self.audio_mp4_itag + self.video_webm_itag + self.audio_webm_itag):
+            if itag in (self.video_mp4_itag + self.video_webm_itag + self.audio_mp4_itag + self.audio_webm_itag):
                 self.itag_list.append(itag)
                 self.itag_filetype[itag] = param['mimeType'].split('/')[1].split(';')[0]
                 self.itag_mimetype[itag] = param['mimeType'].split('/')[0]
@@ -187,14 +198,13 @@ class Video():
 
     def download_video(self):
         self.analyse_websource()
-        os.makedirs(f'{self.datapath}/videoheader/{self.video_name}', exist_ok=True)
+        os.makedirs(f'{self.datapath}videoheader/{self.video_name}', exist_ok=True)
         for itag in self.itag_list:
-            videopath = f'{self.datapath}/videoheader/{self.video_name}/{self.video_name}_{self.itag_mimetype[itag]}_{itag}.{self.itag_filetype[itag]}'
+            videopath = f'{self.datapath}videoheader/{self.video_name}/{self.video_name}_{self.itag_mimetype[itag]}_{itag}.{self.itag_filetype[itag]}'
             while 10:
                 if os.path.exists(videopath):
                     break
-                command = 'yt-dlp -f {} {} -o {}'.format(itag, self.url, videopath)
-                command = command.split(' ')
+                command = f'yt-dlp -f {itag} {self.url} -o {videopath}'.split(' ')
                 process = subprocess.Popen(command)
                 time.sleep(10)
                 process.kill()
@@ -214,36 +224,47 @@ class Video():
             if box is not None:
                 with open(self.fingerpath, 'a') as f:
                     url = 'https://www.youtube.com//watch?v=' + self.video_name
-                    f.write(f'{url},{str(itag)},{self.itag_mimetype[itag]}/{self.itag_filetype[itag]},{self.itag_quality[itag]},{self.itag_vcodec[itag]},{str(self.itag_contentlength[itag])},')
+                    f.write(
+                        f'{url},{str(itag)},{self.itag_mimetype[itag]}/{self.itag_filetype[itag]},{self.itag_quality[itag]},{self.itag_vcodec[itag]},{str(self.itag_contentlength[itag])},')
                     if box.filetype == 'mp4':
                         seg_list = box.reference_list
+                        dura_list = [1000 * x // box.Timescale for x in box.duration_list]
+                        time_list = [0] + list(accumulate(dura_list))
                     elif box.filetype == 'webm':
                         seg_list = box.track_list
+                        time_list = box.timeline
                     f.write(str(len(seg_list)) + ',')
                     seg_str = ''
                     for seg in seg_list:
                         seg_str = seg_str + '/' + str(seg)
-                    f.write(seg_str)
-                    f.write('\n')
+                    f.write(seg_str + ',')
+                    time_str = ''
+                    for tim in time_list:
+                        time_str = time_str + '/' + str(tim)
+                    f.write(time_str + '\n')
 
 
-if __name__ == '__main__':
-    datapath = '../data'
-    fingerpath = '../data/fingerprint/segment.csv'
+def batch_segment():
+    conf = configparser.ConfigParser()
+    conf.read('config.conf', encoding='UTF-8')
+    url_list_path = conf.get('get_segment', 'url_list_path')
 
-    # download = Video('https://www.youtube.com/watch?v=i1oFFqFMlvI' , datapath, fingerpath)
-
-    with open('../data/url/wenzhaoofficial_url.csv', 'r') as f:
+    with open(url_list_path, 'r') as f:
         reader = csv.reader(f)
         txt = list(reader)
     url_list = [i[0] for i in txt]
 
     for i in range(0, len(url_list)):
         try:
-            video = Video(url_list[i], datapath, fingerpath)
+            video = Video(url_list[i])
             video.get_websource()
             video.download_video()
             video.analyse_video()
         except:
+            print(f'{url_list[i]}: get segment error')
             with open('../data/fingerprint/error_log.csv', 'a') as f:
-                f.write(f'{url_list[i]}\n')
+                f.write(f'{url_list[i]}: get segment error\n')
+
+
+if __name__ == '__main__':
+    batch_segment()

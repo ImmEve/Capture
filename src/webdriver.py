@@ -11,9 +11,9 @@ class Webdriver():
     def __init__(self):
         conf = configparser.ConfigParser()
         conf.read('config.conf', encoding='UTF-8')
-        self.chrome_driver_path = conf.get('parameter', 'chrome_driver_path')
-        self.chrome_user_data_path = conf.get('parameter', 'chrome_user_data_path')
-        self.errorlog = conf.get('parameter', 'errorlog')
+        self.chrome_driver_path = conf.get('capture', 'chrome_driver_path')
+        self.chrome_user_data_path = conf.get('capture', 'chrome_user_data_path')
+        self.errorlog = conf.get('capture', 'errorlog')
         self.loop_count = 10
 
     # 初始化chrom driver
